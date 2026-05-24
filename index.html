@@ -132,14 +132,17 @@
       <div class="field-grid">
         <div class="field">
           <label for="area">Площадь участка, га</label>
+          <small class="field-desc">Общая площадь территории, которая попадает в расчёт. Для леса и рекультивации используйте гектары участка, для озеленения — площадь зоны работ.</small>
           <input class="control" id="area" type="number" min="0" step="0.1" value="12" />
         </div>
         <div class="field">
           <label for="trees">Количество деревьев, шт.</label>
+          <small class="field-desc">Сколько единиц посадочного материала или деревьев участвует в проекте. Для рекультивации поле используется в биологическом этапе, для озеленения — как основная количественная база.</small>
           <input class="control" id="trees" type="number" min="0" step="1" value="8000" />
         </div>
         <div class="field">
           <label for="saplingType">Вид саженцев</label>
+          <small class="field-desc">Выберите тип посадочного материала. От этого зависят стоимость материала и часть расчётной цены работ.</small>
           <select class="control" id="saplingType">
             <option value="standard">Стандартные сеянцы</option>
             <option value="enhanced">Усиленные с закрытой корневой</option>
@@ -148,7 +151,14 @@
         </div>
         <div class="field">
           <label for="distance">Логистика, км</label>
+          <small class="field-desc">Транспортное плечо: расстояние доставки техники, людей, саженцев или грунта до объекта. Используется в логистике и расчёте ГСМ.</small>
           <input class="control" id="distance" type="number" min="0" step="1" value="180" />
+        </div>
+        <div class="field">
+          <label for="unitPrice">Цена за единицу, руб.</label>
+          <small class="field-desc">Ручная цена основной производственной позиции. Для леса и рекультивации обычно это ставка за 1 га ключевого этапа, для озеленения — цена посадки 1 дерева.</small>
+          <input class="control" id="unitPrice" type="number" min="0" step="1" value="51" />
+          <small>Можно задать свою цену вместо базовой модели расчёта.</small>
         </div>
       </div>
 
@@ -156,22 +166,27 @@
       <div class="field-grid">
         <div class="field">
           <label for="fuelPrice">ГСМ, руб/л</label>
+          <small class="field-desc">Фактическая или плановая цена топлива. Используется для расчёта транспортных и эксплуатационных затрат.</small>
           <input class="control" id="fuelPrice" type="number" min="0" step="0.1" value="72" />
         </div>
         <div class="field">
           <label for="fuelNorm">Норма ГСМ, л/км</label>
+          <small class="field-desc">Средний расход топлива на 1 км транспортного плеча или движения техники. Подставьте собственную норму под ваш парк техники.</small>
           <input class="control" id="fuelNorm" type="number" min="0" step="0.01" value="0.32" />
         </div>
         <div class="field">
           <label for="laborRate">Ставка труда, руб/н-ч</label>
+          <small class="field-desc">Стоимость одного нормо-часа. Обычно включает рабочих, операторов техники, бригадиров и инженерное сопровождение по вашей внутренней модели.</small>
           <input class="control" id="laborRate" type="number" min="0" step="1" value="950" />
         </div>
         <div class="field">
           <label for="laborNorm">Норма труда, н-ч/га</label>
+          <small class="field-desc">Сколько нормо-часов требуется на 1 гектар работ. Для озеленения показатель дополнительно дополняется расчётом по количеству деревьев.</small>
           <input class="control" id="laborNorm" type="number" min="0" step="0.1" value="42" />
         </div>
         <div class="field">
           <label for="overhead">Накладные и резерв, %</label>
+          <small class="field-desc">Процент поверх прямых затрат: организация работ, непредвиденные расходы, управленческий резерв и иные надстройки сметы.</small>
           <input class="control" id="overhead" type="number" min="0" step="0.1" value="12" />
           <small class="hint-hide">Используется для сводной сметы и тендерной ведомости.</small>
         </div>
@@ -280,7 +295,7 @@
         laborFactor: 1,
         items: inputs => [
           ['Лесовосстановление', 'Обследование и проект лесовосстановления', 'га', inputs.area, inputs.projectPerHa, 'Проектный блок и натурное обследование'],
-          ['Лесовосстановление', 'Подготовка почвы и посадка', 'га', inputs.area, inputs.basePerHa, 'Базовая ставка по искусственному восстановлению'],
+          ['Лесовосстановление', 'Подготовка почвы и посадка', 'га', inputs.area, inputs.unitPrice || inputs.basePerHa, 'Цена за единицу может быть изменена вручную'],
           ['Лесовосстановление', 'Посадочный материал', 'шт.', inputs.trees, inputs.saplingCost, 'Сеянцы / саженцы по выбранному типу'],
           ['Лесовосстановление', 'Агротехнический уход', 'га', inputs.area, inputs.maintenancePerHa, 'Уход и контроль приживаемости'],
         ]
@@ -294,7 +309,7 @@
         laborFactor: 1.25,
         items: inputs => [
           ['Рекультивация', 'Проект рекультивации и обследование', 'га', inputs.area, inputs.projectPerHa, 'Технический и биологический этапы в расчётной модели'],
-          ['Рекультивация', 'Технический этап рекультивации', 'га', inputs.area, inputs.basePerHa, 'Планировка, грунты, подготовка'],
+          ['Рекультивация', 'Технический этап рекультивации', 'га', inputs.area, inputs.unitPrice || inputs.basePerHa, 'Цена за единицу может быть изменена вручную'],
           ['Рекультивация', 'Биологический этап / восстановление покрова', 'га', inputs.area, inputs.maintenancePerHa, 'Озеленение, восстановительные мероприятия'],
           ['Рекультивация', 'Саженцы и вспомогательные материалы', 'шт.', Math.max(inputs.trees * 0.35, 0), inputs.saplingCost, 'Используется для биологического этапа'],
         ]
@@ -308,7 +323,7 @@
         laborFactor: 0.9,
         items: inputs => [
           ['Озеленение', 'Схема посадки и подготовка мест', 'га', inputs.area, inputs.projectPerHa, 'План размещения и разметка'],
-          ['Озеленение', 'Посадка деревьев и кустарников', 'шт.', inputs.trees, inputs.basePerTree, 'Посадочные работы'],
+          ['Озеленение', 'Посадка деревьев и кустарников', 'шт.', inputs.trees, inputs.unitPrice || inputs.basePerTree, 'Цена за единицу может быть изменена вручную'],
           ['Озеленение', 'Посадочный материал', 'шт.', inputs.trees, inputs.saplingCost, 'Выбранный тип материала'],
           ['Озеленение', 'Гарантийный уход', 'га', inputs.area, inputs.maintenancePerHa, 'Полив, подвязка, замена отпада'],
         ]
@@ -327,9 +342,10 @@
       const laborNorm = Math.max(parseFloat(el('laborNorm').value) || 0, 0);
       const overhead = Math.max(parseFloat(el('overhead').value) || 0, 0);
       const saplingCost = saplingUnitCosts[saplingType] * saplingMultipliers[saplingType];
-      const basePerTree = 180 + (saplingType === 'premium' ? 650 : saplingType === 'enhanced' ? 260 : 120);
+      const unitPrice = Math.max(parseFloat(el('unitPrice').value) || 0, 0);
+      const basePerTree = unitPrice || (180 + (saplingType === 'premium' ? 650 : saplingType === 'enhanced' ? 260 : 120));
       return {
-        area, trees, saplingType, distance, fuelPrice, fuelNorm, laborRate, laborNorm, overhead,
+        area, trees, saplingType, distance, fuelPrice, fuelNorm, laborRate, laborNorm, overhead, unitPrice,
         saplingCost, basePerTree,
         basePerHa: modeProfile.basePerHa,
         projectPerHa: modeProfile.projectPerHa,
@@ -475,9 +491,9 @@
 
     function applyDemo(mode) {
       const presets = {
-        forest: { area: 18, trees: 22000, saplingType: 'enhanced', distance: 240, fuelPrice: 73, fuelNorm: 0.34, laborRate: 980, laborNorm: 48, overhead: 14 },
-        reclamation: { area: 7.5, trees: 4200, saplingType: 'standard', distance: 120, fuelPrice: 74, fuelNorm: 0.42, laborRate: 1100, laborNorm: 65, overhead: 16 },
-        greening: { area: 2.2, trees: 380, saplingType: 'premium', distance: 45, fuelPrice: 71, fuelNorm: 0.22, laborRate: 1200, laborNorm: 28, overhead: 12 }
+        forest: { area: 18, trees: 22000, saplingType: 'enhanced', distance: 240, fuelPrice: 73, fuelNorm: 0.34, laborRate: 980, laborNorm: 48, overhead: 14, unitPrice: 68000 },
+        reclamation: { area: 7.5, trees: 4200, saplingType: 'standard', distance: 120, fuelPrice: 74, fuelNorm: 0.42, laborRate: 1100, laborNorm: 65, overhead: 16, unitPrice: 145000 },
+        greening: { area: 2.2, trees: 380, saplingType: 'premium', distance: 45, fuelPrice: 71, fuelNorm: 0.22, laborRate: 1200, laborNorm: 28, overhead: 12, unitPrice: 830 }
       };
       const p = presets[mode || state.mode];
       Object.entries(p).forEach(([key, val]) => { if (el(key)) el(key).value = val; });
