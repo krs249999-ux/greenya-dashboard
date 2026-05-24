@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ГРИНя — сметный дашборд</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem; --space-16: 4rem;
+      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9; --color-surface-offset: #efece6; --color-border: #d9d2ca;
+      --color-text: #28251d; --color-text-muted: #6f6d66; --color-text-faint: #aca79e; --color-text-inverse: #f7f6f2;
+      --color-primary: #4c8760; --color-primary-hover: #3d714f; --color-accent: #9a4d1b; --color-success: #437a22; --color-warning: #964219; --color-blue: #3d6e8f;
+      --radius-sm: 0.4rem; --radius-md: 0.75rem; --radius-lg: 1rem; --radius-xl: 1.25rem; --shadow-sm: 0 1px 2px rgba(20,20,20,.05); --shadow-md: 0 8px 24px rgba(20,20,20,.08);
+      --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      --font-body: 'Satoshi', Arial, sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #242320; --color-surface-offset: #2c2a27; --color-border: #383632;
+      --color-text: #e6e1d9; --color-text-muted: #b9b3aa; --color-text-faint: #817b73; --color-text-inverse: #151412;
+      --color-primary: #63a377; --color-primary-hover: #79b28a; --color-accent: #c27340; --color-success: #82b860; --color-warning: #d28b55; --color-blue: #78a4c0;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.2); --shadow-md: 0 12px 32px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; margin: 0; }
+    body { font-family: var(--font-body); font-size: var(--text-base); color: var(--color-text); background: var(--color-bg); line-height: 1.45; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .skip-link { position:absolute; left:-9999px; top:auto; }
+    .skip-link:focus { left:var(--space-4); top:var(--space-4); z-index:1000; background:var(--color-primary); color:var(--color-text-inverse); padding:var(--space-2) var(--space-3); border-radius:var(--radius-sm); }
+    .dashboard { display:grid; grid-template-columns: 320px 1fr; grid-template-rows: auto 1fr; height:100dvh; }
+    .sidebar { grid-row:1 / -1; background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 94%, var(--color-primary) 6%), var(--color-surface)); border-right:1px solid color-mix(in srgb, var(--color-text) 12%, transparent); overflow-y:auto; overscroll-behavior:contain; padding:var(--space-6); }
+    .header { grid-column:2; position:sticky; top:0; z-index:10; background:color-mix(in srgb, var(--color-bg) 90%, transparent); backdrop-filter: blur(14px); border-bottom:1px solid color-mix(in srgb, var(--color-text) 10%, transparent); padding:var(--space-4) var(--space-6); display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); }
+    .main { grid-column:2; overflow-y:auto; overscroll-behavior:contain; padding:var(--space-6); }
+    .brand { display:flex; align-items:center; gap:var(--space-3); margin-bottom:var(--space-6); }
+    .logo { width:42px; height:42px; color:var(--color-primary); }
+    .brand-title { font-size:var(--text-lg); font-weight:800; letter-spacing:-0.02em; }
+    .brand-sub { color:var(--color-text-muted); font-size:var(--text-sm); }
+    .nav-chip { display:inline-flex; align-items:center; padding:var(--space-1) var(--space-3); border-radius:999px; background:color-mix(in srgb, var(--color-accent) 12%, transparent); color:var(--color-accent); font-size:var(--text-xs); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .section-title { font-size:var(--text-sm); color:var(--color-text-muted); margin:var(--space-5) 0 var(--space-3); text-transform:uppercase; letter-spacing:.08em; }
+    .field-grid { display:grid; gap:var(--space-4); }
+    .field { display:grid; gap:var(--space-2); }
+    .field label { font-size:var(--text-sm); font-weight:700; }
+    .field small { color:var(--color-text-muted); font-size:var(--text-xs); }
+    .control, .toggle-group button { width:100%; border:1px solid color-mix(in srgb, var(--color-text) 12%, transparent); background:var(--color-surface-2); color:var(--color-text); border-radius:var(--radius-md); padding:0.85rem 0.9rem; min-height:44px; box-shadow:var(--shadow-sm); }
+    .control:focus-visible, .toggle-group button:focus-visible, .btn:focus-visible { outline:2px solid var(--color-primary); outline-offset:2px; }
+    .toggle-group { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-2); }
+    .toggle-group button.active { background:var(--color-primary); color:var(--color-text-inverse); border-color:var(--color-primary); }
+    .btn-row { display:flex; gap:var(--space-3); flex-wrap:wrap; }
+    .btn { border:none; border-radius:var(--radius-md); min-height:44px; padding:0.9rem 1rem; font-weight:700; display:inline-flex; align-items:center; justify-content:center; gap:var(--space-2); transition:transform var(--transition), background var(--transition), color var(--transition); }
+    .btn:hover { transform:translateY(-1px); }
+    .btn-primary { background:var(--color-primary); color:var(--color-text-inverse); }
+    .btn-secondary { background:var(--color-surface); color:var(--color-text); border:1px solid color-mix(in srgb, var(--color-text) 12%, transparent); }
+    .btn-accent { background:var(--color-accent); color:var(--color-text-inverse); }
+    .header h1 { font-size:var(--text-xl); line-height:1.05; letter-spacing:-0.03em; margin:0; }
+    .header-meta { color:var(--color-text-muted); font-size:var(--text-sm); }
+    .theme-toggle { min-width:44px; min-height:44px; border-radius:999px; border:1px solid color-mix(in srgb, var(--color-text) 12%, transparent); background:var(--color-surface); color:var(--color-text); }
+    .grid { display:grid; gap:var(--space-4); }
+    .kpis { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .layout { grid-template-columns: 1.15fr .85fr; align-items:start; }
+    .card { background:var(--color-surface); border:1px solid color-mix(in srgb, var(--color-text) 10%, transparent); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); padding:var(--space-5); }
+    .card h2, .card h3 { margin:0 0 var(--space-4); font-size:var(--text-lg); }
+    .kpi { display:grid; gap:var(--space-2); }
+    .kpi-label { font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.08em; color:var(--color-text-muted); }
+    .kpi-value { font-size:clamp(1.4rem,1.2rem + 1vw,2rem); font-weight:900; letter-spacing:-0.03em; font-variant-numeric: tabular-nums lining-nums; }
+    .kpi-note { font-size:var(--text-xs); color:var(--color-text-muted); }
+    .tag { display:inline-flex; padding:var(--space-1) var(--space-2); border-radius:999px; font-size:var(--text-xs); font-weight:700; background:color-mix(in srgb, var(--color-primary) 12%, transparent); color:var(--color-primary); }
+    .summary-list, .mini-stats { display:grid; gap:var(--space-3); }
+    .summary-item, .mini-row { display:flex; justify-content:space-between; gap:var(--space-3); align-items:center; font-size:var(--text-sm); }
+    .summary-item strong, .mini-row strong, td.num, .money { font-variant-numeric: tabular-nums lining-nums; }
+    .warn-box { background:color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); border:1px solid color-mix(in srgb, var(--color-accent) 25%, transparent); border-radius:var(--radius-md); padding:var(--space-4); color:var(--color-text); }
+    .table-wrap { overflow:auto; border-radius:var(--radius-md); border:1px solid color-mix(in srgb, var(--color-text) 10%, transparent); }
+    table { width:100%; border-collapse:collapse; font-size:var(--text-sm); }
+    th, td { padding:0.8rem 0.75rem; border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent); text-align:left; vertical-align:top; }
+    th { position:sticky; top:0; background:var(--color-surface-2); z-index:1; font-size:var(--text-xs); text-transform:uppercase; letter-spacing:.06em; color:var(--color-text-muted); }
+    tbody tr:hover { background:color-mix(in srgb, var(--color-primary) 4%, var(--color-surface)); }
+    td.num { text-align:right; }
+    .footer-note { color:var(--color-text-muted); font-size:var(--text-xs); margin-top:var(--space-3); }
+    .hidden { display:none !important; }
+    canvas { width:100% !important; height:320px !important; }
+    .mobile-bar { display:none; }
+    @media (max-width: 1100px) {
+      .dashboard { grid-template-columns: 88px 1fr; }
+      .sidebar { padding:var(--space-4); }
+      .brand-copy, .sidebar .section-title, .sidebar .field small, .sidebar .field label.inline-hide, .sidebar .hint-hide { display:none; }
+      .toggle-group { grid-template-columns:1fr; }
+    }
+    @media (max-width: 860px) {
+      html, body { overflow:auto; }
+      .dashboard { display:block; height:auto; }
+      .sidebar { border-right:none; border-bottom:1px solid color-mix(in srgb, var(--color-text) 12%, transparent); }
+      .header { position:static; }
+      .main { overflow:visible; padding:var(--space-4); }
+      .kpis, .layout { grid-template-columns:1fr; }
+      .header { padding:var(--space-4); flex-direction:column; align-items:flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">К основному содержанию</a>
+  <div class="dashboard">
+    <aside class="sidebar" aria-label="Панель параметров">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 64 64" fill="none" aria-label="Логотип ГРИНя">
+          <path d="M17 44C17 29 28 18 44 18" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          <path d="M20 50C29 45 35 36 37 22" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="19" cy="48" r="5" fill="currentColor"/>
+        </svg>
+        <div class="brand-copy">
+          <div class="brand-title">ГРИНя</div>
+          <div class="brand-sub">Сметный дашборд для ТЗ</div>
+        </div>
+      </div>
+
+      <div class="nav-chip">Инвест-обоснование</div>
+
+      <div class="section-title">Режим расчёта</div>
+      <div class="toggle-group" role="tablist" aria-label="Выбор режима">
+        <button type="button" class="mode-btn active" data-mode="forest">Лес</button>
+        <button type="button" class="mode-btn" data-mode="reclamation">Рекультивация</button>
+        <button type="button" class="mode-btn" data-mode="greening">Озеленение</button>
+      </div>
+
+      <div class="section-title">Параметры</div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="area">Площадь участка, га</label>
+          <input class="control" id="area" type="number" min="0" step="0.1" value="12" />
+        </div>
+        <div class="field">
+          <label for="trees">Количество деревьев, шт.</label>
+          <input class="control" id="trees" type="number" min="0" step="1" value="8000" />
+        </div>
+        <div class="field">
+          <label for="saplingType">Вид саженцев</label>
+          <select class="control" id="saplingType">
+            <option value="standard">Стандартные сеянцы</option>
+            <option value="enhanced">Усиленные с закрытой корневой</option>
+            <option value="premium">Крупномеры / премиум</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="distance">Логистика, км</label>
+          <input class="control" id="distance" type="number" min="0" step="1" value="180" />
+        </div>
+      </div>
+
+      <div class="section-title">Ставки и нормы</div>
+      <div class="field-grid">
+        <div class="field">
+          <label for="fuelPrice">ГСМ, руб/л</label>
+          <input class="control" id="fuelPrice" type="number" min="0" step="0.1" value="72" />
+        </div>
+        <div class="field">
+          <label for="fuelNorm">Норма ГСМ, л/км</label>
+          <input class="control" id="fuelNorm" type="number" min="0" step="0.01" value="0.32" />
+        </div>
+        <div class="field">
+          <label for="laborRate">Ставка труда, руб/н-ч</label>
+          <input class="control" id="laborRate" type="number" min="0" step="1" value="950" />
+        </div>
+        <div class="field">
+          <label for="laborNorm">Норма труда, н-ч/га</label>
+          <input class="control" id="laborNorm" type="number" min="0" step="0.1" value="42" />
+        </div>
+        <div class="field">
+          <label for="overhead">Накладные и резерв, %</label>
+          <input class="control" id="overhead" type="number" min="0" step="0.1" value="12" />
+          <small class="hint-hide">Используется для сводной сметы и тендерной ведомости.</small>
+        </div>
+      </div>
+
+      <div class="section-title">Действия</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="recalcBtn" type="button">Пересчитать</button>
+        <button class="btn btn-secondary" id="sampleBtn" type="button">Демо‑данные</button>
+        <button class="btn btn-accent" id="exportBtn" type="button">Excel / ВОР</button>
+      </div>
+      <p class="footer-note">Шаблон рассчитан для предварительного обоснования инвестиций и тендерной подготовки. Финальные расценки корректируются под проект и регион.</p>
+    </aside>
+
+    <header class="header">
+      <div>
+        <h1>Калькулятор сметы и ВОР</h1>
+        <div class="header-meta">Лесовосстановление, рекультивация и озеленение в единой модели ГРИНя</div>
+      </div>
+      <div class="btn-row">
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Переключить тему">◐</button>
+      </div>
+    </header>
+
+    <main class="main" id="main">
+      <section class="grid kpis" aria-label="Ключевые показатели">
+        <article class="card kpi"><div class="kpi-label">Итого по смете</div><div class="kpi-value" id="kpiTotal">0 ₽</div><div class="kpi-note">С учётом накладных и резерва</div></article>
+        <article class="card kpi"><div class="kpi-label">Материалы</div><div class="kpi-value" id="kpiMaterials">0 ₽</div><div class="kpi-note">Саженцы, грунт, вспомогательные ресурсы</div></article>
+        <article class="card kpi"><div class="kpi-label">Труд</div><div class="kpi-value" id="kpiLabor">0 ₽</div><div class="kpi-note">Норматив труда на проектный объём</div></article>
+        <article class="card kpi"><div class="kpi-label">Логистика и ГСМ</div><div class="kpi-value" id="kpiLogistics">0 ₽</div><div class="kpi-note">Плечо доставки, ГСМ и транспорт</div></article>
+      </section>
+
+      <section class="grid layout" style="margin-top: var(--space-4);">
+        <article class="card">
+          <div style="display:flex; justify-content:space-between; gap:var(--space-3); align-items:center; margin-bottom:var(--space-4);">
+            <div>
+              <h2>Структура затрат</h2>
+              <div class="header-meta">Автопересчёт по текущим параметрам</div>
+            </div>
+            <span class="tag" id="modeTag">Лесовосстановление</span>
+          </div>
+          <canvas id="costChart" aria-label="Диаграмма структуры затрат"></canvas>
+        </article>
+
+        <article class="card">
+          <h2>Сводка расчёта</h2>
+          <div class="summary-list" id="summaryList"></div>
+          <div class="warn-box" style="margin-top:var(--space-4);">
+            <strong>Тендерный комментарий.</strong> Используйте выгрузку Excel как базу ВОР, а затем добавляйте региональные коэффициенты, коммерческие предложения поставщиков и пояснительную записку по ТЗ.
+          </div>
+        </article>
+      </section>
+
+      <section class="grid" style="margin-top: var(--space-4);">
+        <article class="card">
+          <div style="display:flex; justify-content:space-between; gap:var(--space-3); align-items:center; margin-bottom:var(--space-4); flex-wrap:wrap;">
+            <div>
+              <h2>Ведомость объёмов работ</h2>
+              <div class="header-meta">Готово для экспорта в Excel и приложений к тендерной заявке</div>
+            </div>
+            <button class="btn btn-primary" type="button" id="exportBtnTop">Скачать Excel</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Раздел</th>
+                  <th>Наименование работ</th>
+                  <th>Ед.</th>
+                  <th>Кол-во</th>
+                  <th>Цена</th>
+                  <th>Стоимость</th>
+                  <th>Комментарий</th>
+                </tr>
+              </thead>
+              <tbody id="vorBody"></tbody>
+            </table>
+          </div>
+          <div class="footer-note">ВОР генерируется автоматически на основе текущих входных параметров и может использоваться как предварительная сметная ведомость.</div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      mode: 'forest',
+      chart: null,
+      data: null,
+      theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    };
+
+    const el = id => document.getElementById(id);
+    const rub = v => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(v || 0);
+    const num = v => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(v || 0);
+
+    const saplingMultipliers = { standard: 1, enhanced: 1.35, premium: 2.6 };
+    const saplingUnitCosts = { standard: 24, enhanced: 38, premium: 1450 };
+    const profiles = {
+      forest: {
+        label: 'Лесовосстановление',
+        basePerHa: 68000,
+        projectPerHa: 14000,
+        maintenancePerHa: 18000,
+        logisticsBase: 18000,
+        laborFactor: 1,
+        items: inputs => [
+          ['Лесовосстановление', 'Обследование и проект лесовосстановления', 'га', inputs.area, inputs.projectPerHa, 'Проектный блок и натурное обследование'],
+          ['Лесовосстановление', 'Подготовка почвы и посадка', 'га', inputs.area, inputs.basePerHa, 'Базовая ставка по искусственному восстановлению'],
+          ['Лесовосстановление', 'Посадочный материал', 'шт.', inputs.trees, inputs.saplingCost, 'Сеянцы / саженцы по выбранному типу'],
+          ['Лесовосстановление', 'Агротехнический уход', 'га', inputs.area, inputs.maintenancePerHa, 'Уход и контроль приживаемости'],
+        ]
+      },
+      reclamation: {
+        label: 'Рекультивация',
+        basePerHa: 145000,
+        projectPerHa: 22000,
+        maintenancePerHa: 54000,
+        logisticsBase: 28000,
+        laborFactor: 1.25,
+        items: inputs => [
+          ['Рекультивация', 'Проект рекультивации и обследование', 'га', inputs.area, inputs.projectPerHa, 'Технический и биологический этапы в расчётной модели'],
+          ['Рекультивация', 'Технический этап рекультивации', 'га', inputs.area, inputs.basePerHa, 'Планировка, грунты, подготовка'],
+          ['Рекультивация', 'Биологический этап / восстановление покрова', 'га', inputs.area, inputs.maintenancePerHa, 'Озеленение, восстановительные мероприятия'],
+          ['Рекультивация', 'Саженцы и вспомогательные материалы', 'шт.', Math.max(inputs.trees * 0.35, 0), inputs.saplingCost, 'Используется для биологического этапа'],
+        ]
+      },
+      greening: {
+        label: 'Озеленение',
+        basePerHa: 42000,
+        projectPerHa: 9000,
+        maintenancePerHa: 16000,
+        logisticsBase: 14000,
+        laborFactor: 0.9,
+        items: inputs => [
+          ['Озеленение', 'Схема посадки и подготовка мест', 'га', inputs.area, inputs.projectPerHa, 'План размещения и разметка'],
+          ['Озеленение', 'Посадка деревьев и кустарников', 'шт.', inputs.trees, inputs.basePerTree, 'Посадочные работы'],
+          ['Озеленение', 'Посадочный материал', 'шт.', inputs.trees, inputs.saplingCost, 'Выбранный тип материала'],
+          ['Озеленение', 'Гарантийный уход', 'га', inputs.area, inputs.maintenancePerHa, 'Полив, подвязка, замена отпада'],
+        ]
+      }
+    };
+
+    function getInputs() {
+      const modeProfile = profiles[state.mode];
+      const area = Math.max(parseFloat(el('area').value) || 0, 0);
+      const trees = Math.max(parseFloat(el('trees').value) || 0, 0);
+      const saplingType = el('saplingType').value;
+      const distance = Math.max(parseFloat(el('distance').value) || 0, 0);
+      const fuelPrice = Math.max(parseFloat(el('fuelPrice').value) || 0, 0);
+      const fuelNorm = Math.max(parseFloat(el('fuelNorm').value) || 0, 0);
+      const laborRate = Math.max(parseFloat(el('laborRate').value) || 0, 0);
+      const laborNorm = Math.max(parseFloat(el('laborNorm').value) || 0, 0);
+      const overhead = Math.max(parseFloat(el('overhead').value) || 0, 0);
+      const saplingCost = saplingUnitCosts[saplingType] * saplingMultipliers[saplingType];
+      const basePerTree = 180 + (saplingType === 'premium' ? 650 : saplingType === 'enhanced' ? 260 : 120);
+      return {
+        area, trees, saplingType, distance, fuelPrice, fuelNorm, laborRate, laborNorm, overhead,
+        saplingCost, basePerTree,
+        basePerHa: modeProfile.basePerHa,
+        projectPerHa: modeProfile.projectPerHa,
+        maintenancePerHa: modeProfile.maintenancePerHa,
+        logisticsBase: modeProfile.logisticsBase,
+        laborFactor: modeProfile.laborFactor
+      };
+    }
+
+    function calculate() {
+      const input = getInputs();
+      const profile = profiles[state.mode];
+      const baseItems = profile.items(input).map(([section, name, unit, qty, price, note]) => ({
+        section, name, unit, qty, price, total: qty * price, note
+      }));
+      const laborHours = input.area * input.laborNorm * profile.laborFactor + input.trees * (state.mode === 'greening' ? 0.08 : state.mode === 'forest' ? 0.03 : 0.02);
+      const laborTotal = laborHours * input.laborRate;
+      const fuelLiters = input.distance * input.fuelNorm;
+      const fuelTotal = fuelLiters * input.fuelPrice;
+      const logisticsTotal = input.logisticsBase + input.distance * (state.mode === 'reclamation' ? 145 : state.mode === 'greening' ? 95 : 110);
+      const materialTotal = baseItems.filter(x => x.name.toLowerCase().includes('материал')).reduce((s, i) => s + i.total, 0);
+      const worksTotal = baseItems.filter(x => !x.name.toLowerCase().includes('материал')).reduce((s, i) => s + i.total, 0);
+      const subtotal = baseItems.reduce((s, i) => s + i.total, 0) + laborTotal + fuelTotal + logisticsTotal;
+      const overheadTotal = subtotal * input.overhead / 100;
+      const total = subtotal + overheadTotal;
+
+      const rows = [
+        ...baseItems,
+        { section: 'Ресурсы', name: 'Трудозатраты', unit: 'н-ч', qty: laborHours, price: input.laborRate, total: laborTotal, note: 'Норматив труда по участку и виду работ' },
+        { section: 'Логистика', name: 'Транспортная логистика', unit: 'км', qty: input.distance, price: logisticsTotal / Math.max(input.distance || 1, 1), total: logisticsTotal, note: 'Плечо доставки техники и материала' },
+        { section: 'ГСМ', name: 'Топливо и ГСМ', unit: 'л', qty: fuelLiters, price: input.fuelPrice, total: fuelTotal, note: 'Норма расхода на транспортное плечо' },
+        { section: 'Сводно', name: 'Накладные расходы и резерв', unit: '%', qty: input.overhead, price: subtotal / 100, total: overheadTotal, note: 'Накладные, резерв и организационные затраты' }
+      ];
+
+      state.data = {
+        input, profile, rows,
+        summary: {
+          total, subtotal, materialTotal, worksTotal, laborTotal, logisticsTotal: logisticsTotal + fuelTotal, fuelTotal, overheadTotal,
+          costPerHa: input.area ? total / input.area : 0,
+          costPerTree: input.trees ? total / input.trees : 0,
+          laborHours,
+        }
+      };
+      render();
+    }
+
+    function render() {
+      const { profile, rows, summary, input } = state.data;
+      el('modeTag').textContent = profile.label;
+      el('kpiTotal').textContent = rub(summary.total);
+      el('kpiMaterials').textContent = rub(summary.materialTotal);
+      el('kpiLabor').textContent = rub(summary.laborTotal);
+      el('kpiLogistics').textContent = rub(summary.logisticsTotal);
+
+      const summaryRows = [
+        ['Режим расчёта', profile.label],
+        ['Площадь участка', `${num(input.area)} га`],
+        ['Количество деревьев', `${num(input.trees)} шт.`],
+        ['Стоимость на 1 га', rub(summary.costPerHa)],
+        ['Стоимость на 1 дерево', rub(summary.costPerTree)],
+        ['Трудозатраты', `${num(summary.laborHours)} н-ч`],
+        ['Подытог прямых затрат', rub(summary.subtotal)],
+        ['Накладные и резерв', rub(summary.overheadTotal)],
+      ];
+      el('summaryList').innerHTML = summaryRows.map(([k,v]) => `<div class="summary-item"><span>${k}</span><strong>${v}</strong></div>`).join('');
+
+      el('vorBody').innerHTML = rows.map(row => `
+        <tr>
+          <td>${row.section}</td>
+          <td>${row.name}</td>
+          <td>${row.unit}</td>
+          <td class="num">${num(row.qty)}</td>
+          <td class="num">${rub(row.price)}</td>
+          <td class="num money">${rub(row.total)}</td>
+          <td>${row.note}</td>
+        </tr>`).join('');
+
+      const chartData = {
+        labels: ['Работы', 'Материалы', 'Труд', 'Логистика', 'Накладные'],
+        values: [summary.worksTotal, summary.materialTotal, summary.laborTotal, summary.logisticsTotal, summary.overheadTotal],
+        colors: ['#4c8760', '#9a4d1b', '#3d6e8f', '#d19900', '#7a39bb']
+      };
+      drawChart(chartData);
+    }
+
+    function drawChart(data) {
+      const ctx = document.getElementById('costChart');
+      if (state.chart) state.chart.destroy();
+      state.chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: data.labels,
+          datasets: [{ data: data.values, backgroundColor: data.colors, borderWidth: 0, hoverOffset: 6 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, color: getComputedStyle(document.documentElement).getPropertyValue('--color-text') } },
+            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${rub(ctx.raw)}` } }
+          }
+        }
+      });
+    }
+
+    function exportExcel() {
+      if (!state.data) return;
+      const { profile, rows, summary, input } = state.data;
+      const wb = XLSX.utils.book_new();
+      const summarySheetData = [
+        ['Проект', 'ГРИНя — Сметный дашборд'],
+        ['Режим', profile.label],
+        ['Площадь, га', input.area],
+        ['Количество деревьев, шт.', input.trees],
+        ['Тип саженцев', input.saplingType],
+        ['Логистика, км', input.distance],
+        ['ГСМ, руб/л', input.fuelPrice],
+        ['Норма ГСМ, л/км', input.fuelNorm],
+        ['Ставка труда, руб/н-ч', input.laborRate],
+        ['Норма труда, н-ч/га', input.laborNorm],
+        ['Накладные и резерв, %', input.overhead],
+        [],
+        ['Итого по смете, руб', summary.total],
+        ['Материалы, руб', summary.materialTotal],
+        ['Работы, руб', summary.worksTotal],
+        ['Труд, руб', summary.laborTotal],
+        ['Логистика и ГСМ, руб', summary.logisticsTotal],
+        ['Накладные, руб', summary.overheadTotal],
+        ['Стоимость на 1 га, руб', summary.costPerHa],
+        ['Стоимость на 1 дерево, руб', summary.costPerTree],
+      ];
+      const vorSheetData = [
+        ['Раздел', 'Наименование работ', 'Ед.', 'Количество', 'Цена', 'Стоимость', 'Комментарий'],
+        ...rows.map(r => [r.section, r.name, r.unit, r.qty, r.price, r.total, r.note])
+      ];
+      const summaryWs = XLSX.utils.aoa_to_sheet(summarySheetData);
+      const vorWs = XLSX.utils.aoa_to_sheet(vorSheetData);
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'Сводка');
+      XLSX.utils.book_append_sheet(wb, vorWs, 'ВОР');
+      XLSX.writeFile(wb, `greenya-vor-${state.mode}.xlsx`);
+    }
+
+    function applyDemo(mode) {
+      const presets = {
+        forest: { area: 18, trees: 22000, saplingType: 'enhanced', distance: 240, fuelPrice: 73, fuelNorm: 0.34, laborRate: 980, laborNorm: 48, overhead: 14 },
+        reclamation: { area: 7.5, trees: 4200, saplingType: 'standard', distance: 120, fuelPrice: 74, fuelNorm: 0.42, laborRate: 1100, laborNorm: 65, overhead: 16 },
+        greening: { area: 2.2, trees: 380, saplingType: 'premium', distance: 45, fuelPrice: 71, fuelNorm: 0.22, laborRate: 1200, laborNorm: 28, overhead: 12 }
+      };
+      const p = presets[mode || state.mode];
+      Object.entries(p).forEach(([key, val]) => { if (el(key)) el(key).value = val; });
+      calculate();
+    }
+
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode-btn').forEach(x => x.classList.remove('active'));
+        btn.classList.add('active');
+        state.mode = btn.dataset.mode;
+        applyDemo(state.mode);
+      });
+    });
+
+    document.querySelectorAll('input, select').forEach(node => node.addEventListener('input', calculate));
+    el('recalcBtn').addEventListener('click', calculate);
+    el('sampleBtn').addEventListener('click', () => applyDemo(state.mode));
+    el('exportBtn').addEventListener('click', exportExcel);
+    el('exportBtnTop').addEventListener('click', exportExcel);
+
+    const toggle = document.querySelector('[data-theme-toggle]');
+    document.documentElement.setAttribute('data-theme', state.theme);
+    toggle.addEventListener('click', () => {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', state.theme);
+      render();
+    });
+
+    applyDemo('forest');
+  </script>
+</body>
+</html>
